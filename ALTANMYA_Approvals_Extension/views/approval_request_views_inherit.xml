@@ -10,9 +10,13 @@
                 </attribute>
             </xpath>
             <xpath expr="//button[@name='action_confirm']" position="after">
+                <field name="current_approver" invisible="1"/>
                 <field name="done_indicator" invisible="1"/>
+                <field name="is_user_notified" invisible="1"/>
+                <!--                , ('current_approver.status' , '=', 'not_read')-->
                 <button name="mark_done" type="object" string="Mark Read"
-                        attrs="{'invisible':['|', ('request_status', 'not in', ['refused']), ('done_indicator', '=', True)]}"/>
+                        attrs="{'invisible':['|', ('request_status', 'not in', ['refused']),
+                                             '|', ('done_indicator', '=', True), ('is_user_notified','!=', True)]}"/>
             </xpath>
             <xpath expr="//button[@name='action_approve']" position="attributes">
                 <attribute name="attrs">{'invisible':['|', ('request_status', 'in', ['approved', 'refused', 'cancel']),

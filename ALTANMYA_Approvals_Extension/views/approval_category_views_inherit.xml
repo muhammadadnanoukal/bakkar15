@@ -10,6 +10,7 @@
                     <field name="line_manager_approval"/>
                 </xpath>
                 <xpath expr="//field[@name='approver_ids']" position="after">
+                    <field name="priority_type" widget="radio"/>
                     <field name="approver_sequence" attrs="{'invisible': [('approval_minimum', '=', 0)]}"/>
                     <field name="notify_even_when_refused"/>
                 </xpath>

@@ -41,6 +41,7 @@ class ApprovalRequest(models.Model):
         ('approved', 'Approved'),
         ('refused', 'Refused'),
         ('cancel', 'Cancel'),
+
     ], default="new", compute="_compute_request_status",
         store=True, tracking=True,
         group_expand='_read_group_request_status')
@@ -52,7 +53,8 @@ class ApprovalRequest(models.Model):
         ('waiting', 'Waiting'),
         ('approved', 'Approved'),
         ('refused', 'Refused'),
-        ('cancel', 'Cancel')], compute="_compute_user_status")
+        ('cancel', 'Cancel'),], compute="_compute_user_status")
+    is_user_notified = fields.Boolean(compute="_compute_user_notified_status")
     has_access_to_request = fields.Boolean(string="Has Access To Request", compute="_compute_has_access_to_request")
     change_request_owner = fields.Boolean(string='Can Change Request Owner', compute='_compute_has_access_to_request')
     attachment_number = fields.Integer('Number of Attachments', compute='_compute_attachment_number')
@@ -73,6 +75,14 @@ class ApprovalRequest(models.Model):
     approver_sequence = fields.Boolean(related="category_id.approver_sequence")
     automated_sequence = fields.Boolean(related="category_id.automated_sequence")
     done_indicator = fields.Boolean(default=False)
+    current_approver = fields.Many2one('approval.approver', compute='compute_current_approver')
+
+    @api.onchange('approver_ids.status')
+    def compute_current_approver(self):
+        approver = self.mapped('approver_ids').filtered(
+            lambda approver: approver.user_id == self.env.user
+        )
+        self.current_approver = approver
 
     @api.depends('request_owner_id')
     @api.depends_context('uid')
@@ -203,9 +213,11 @@ class ApprovalRequest(models.Model):
         if cancel_activities:
             approvers_updated.request_id._cancel_activities()
         if new_status == 'refused' and self.category_id.notify_even_when_refused:
-            print('zaid', approvers_updated[0])
             if len(approvers_updated) >= 1:
+                print('zaid', approvers_updated[0])
                 approvers_updated[0]._create_activity()
+                print('next approver', approvers_updated[0])
+                approvers_updated[0].is_notified = True
 
     def _cancel_activities(self):
         approval_activity = self.env.ref('approvals.mail_activity_data_approval')
@@ -238,6 +250,7 @@ class ApprovalRequest(models.Model):
             lambda approver: approver.user_id == self.env.user
         )
         approver.request_id._cancel_activities()
+        approver.is_notified = False
         self.done_indicator = True
         print('DONE')
 
@@ -262,6 +275,15 @@ class ApprovalRequest(models.Model):
         for approval in self:
             approval.user_status = approval.approver_ids.filtered(
                 lambda approver: approver.user_id == self.env.user).status
+            print('approval status', approval.user_status)
+
+    @api.depends_context('uid')
+    @api.depends('user_status')
+    def _compute_user_notified_status(self):
+        for approval in self:
+            approval.is_user_notified = approval.approver_ids.filtered(
+                lambda approver: approver.user_id == self.env.user).is_notified
+            print('is_user_notified', approval.is_user_notified)
 
     @api.depends('approver_ids.status', 'approver_ids.required')
     def _compute_request_status(self):
@@ -294,13 +316,16 @@ class ApprovalRequest(models.Model):
         for request in self:
             # Don't remove manually added approvers
             users_to_approver = defaultdict(lambda: self.env['approval.approver'])
-            for approver in request.approver_ids:
-                users_to_approver[approver.user_id.id] |= approver
-            users_to_category_approver = defaultdict(lambda: self.env['approval.category.approver'])
-            for approver in request.category_id.approver_ids:
-                users_to_category_approver[approver.user_id.id] |= approver
-            new_users = request.category_id.user_ids
-            print('new users', new_users)
+            new_users = self.env['res.users']
+            if self.category_id.priority_type == 'high':
+                for approver in request.approver_ids:
+                    users_to_approver[approver.user_id.id] |= approver
+                users_to_category_approver = defaultdict(lambda: self.env['approval.category.approver'])
+                for approver in request.category_id.approver_ids:
+                    users_to_category_approver[approver.user_id.id] |= approver
+                new_users = request.category_id.user_ids
+                print('new users', new_users)
+
             manager_user = 0
             line_manager_users = []
             if request.category_id.manager_approval:
@@ -325,6 +350,16 @@ class ApprovalRequest(models.Model):
                     new_users |= emp
                 print('line managers', line_managers)
             print('updated new users', new_users)
+
+            if self.category_id.priority_type == 'low':
+                for approver in request.approver_ids:
+                    users_to_approver[approver.user_id.id] |= approver
+                users_to_category_approver = defaultdict(lambda: self.env['approval.category.approver'])
+                for approver in request.category_id.approver_ids:
+                    users_to_category_approver[approver.user_id.id] |= approver
+                new_users |= request.category_id.user_ids
+                print('new users', new_users)
+
             approver_id_vals = []
             i = 0
             for user in new_users:
@@ -386,6 +421,7 @@ class ApprovalApprover(models.Model):
         ('approved', 'Approved'),
         ('refused', 'Refused'),
         ('cancel', 'Cancel')], string="Status", default="new", readonly=True)
+    is_notified = fields.Boolean(default=False)
     request_id = fields.Many2one('approval.request', string="Request",
                                  ondelete='cascade', check_company=True)
     company_id = fields.Many2one(

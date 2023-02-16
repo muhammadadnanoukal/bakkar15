@@ -10,6 +10,8 @@ class ApprovalCategory(models.Model):
     line_manager_approval = fields.Selection([('approver', 'Is Approver'), ('required', 'Is Required Approver')],
                                              string="Employee's Line Manager")
     notify_even_when_refused = fields.Boolean(string='Notify Approvers Even If Refused')
+    priority_type = fields.Selection([('high', 'Before Line Managers'), ('low', 'After Line Managers')], default='low',
+                                     string='Approvers Priority Type')
 
     @api.constrains('approver_sequence')
     def _constrains_approver_sequence(self):
