@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
+    <record id="approvals.approval_request_action_to_review" model="ir.actions.act_window">
+        <field name="domain">['|',
+            ('category_id.show_all_approvals', '=', True) ,
+            ('notified_user', 'in', uid), ('request_status', '=', 'pending')
+            ]
+        </field>
+    </record>
+
+    <record id="approvals.approval_request_action_all" model="ir.actions.act_window">
+        <field name="domain">
+            ['|',
+            ('category_id.show_all_approvals', '=', True) ,
+            ('notified_user', 'in', uid)
+            ]
+        </field>
+    </record>
+
     <record id="approval_request_view_form_inherit" model="ir.ui.view">
         <field name="name">approval.request.view.form.inherit</field>
         <field name="model">approval.request</field>

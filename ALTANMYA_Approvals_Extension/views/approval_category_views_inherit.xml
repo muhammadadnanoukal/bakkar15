@@ -13,6 +13,7 @@
                     <field name="priority_type" widget="radio"/>
                     <field name="approver_sequence" attrs="{'invisible': [('approval_minimum', '=', 0)]}"/>
                     <field name="notify_even_when_refused"/>
+                    <field name="show_all_approvals"/>
                 </xpath>
             </field>
         </record>

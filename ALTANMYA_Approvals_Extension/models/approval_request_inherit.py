@@ -76,6 +76,7 @@ class ApprovalRequest(models.Model):
     automated_sequence = fields.Boolean(related="category_id.automated_sequence")
     done_indicator = fields.Boolean(default=False)
     current_approver = fields.Many2one('approval.approver', compute='compute_current_approver')
+    notified_user = fields.Many2many('res.users')
 
     @api.onchange('approver_ids.status')
     def compute_current_approver(self):
@@ -165,6 +166,11 @@ class ApprovalRequest(models.Model):
             print(approvers)
 
         approvers._create_activity()
+        users_ids = []
+        for approver in approvers:
+            users_ids.append(approver.user_id.id)
+            self.notified_user = [(4, approver.user_id.id)]
+        print('users ids', users_ids)
         print('approvers to create activity', approvers)
         approvers.write({'status': 'pending'})
         print('approvers', approvers)
@@ -210,12 +216,20 @@ class ApprovalRequest(models.Model):
         approvers_updated.sudo().status = new_status
         if new_status == 'pending':
             approvers_updated._create_activity()
+            users_ids = []
+            for approver in approvers_updated:
+                # users_ids.append(approver.user_id.id)
+                self.notified_user = [(4, approver.user_id.id)]
         if cancel_activities:
+            # self.notified_user = [(6, 0, [])]
             approvers_updated.request_id._cancel_activities()
         if new_status == 'refused' and self.category_id.notify_even_when_refused:
             if len(approvers_updated) >= 1:
                 print('zaid', approvers_updated[0])
                 approvers_updated[0]._create_activity()
+                users_ids = []
+                users_ids.append(approvers_updated[0].user_id.id)
+                self.notified_user = [(4, approvers_updated[0].user_id.id)]
                 print('next approver', approvers_updated[0])
                 approvers_updated[0].is_notified = True
 
@@ -250,7 +264,8 @@ class ApprovalRequest(models.Model):
             lambda approver: approver.user_id == self.env.user
         )
         approver.request_id._cancel_activities()
-        approver.is_notified = False
+        # self.notified_user = [(6, 0, [])]
+        # approver.is_notified = False
         self.done_indicator = True
         print('DONE')
 
