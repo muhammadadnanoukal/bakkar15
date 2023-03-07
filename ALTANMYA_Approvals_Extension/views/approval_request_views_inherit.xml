@@ -2,8 +2,8 @@
 <odoo>
     <record id="approvals.approval_request_action_to_review" model="ir.actions.act_window">
         <field name="domain">['|',
-            ('category_id.show_all_approvals', '=', True) ,
-            ('notified_user', 'in', uid), ('request_status', '=', 'pending')
+            '&amp;', ('category_id.show_all_approvals', '=', True) , ('request_status', '=', 'pending'),
+            '&amp;', ('notified_user', 'in', uid), ('request_status', '=', 'pending')
             ]
         </field>
     </record>
