@@ -104,8 +104,8 @@ class ApprovalRequest(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             category = 'category_id' in vals and self.env['approval.category'].browse(vals['category_id'])
-            if category and category.automated_sequence:
-                vals['name'] = category.sequence_id.next_by_id()
+            # if category and category.automated_sequence:
+            #    vals['name'] = category.sequence_id.next_by_id()
         return super().create(vals_list)
 
     def action_get_attachment_view(self):
